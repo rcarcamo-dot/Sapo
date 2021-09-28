@@ -21,42 +21,51 @@ library(ggrepel)
 library(treeio)
 
 shinyServer(function(input,output,session){
-
-    query <- reactive(input$txt)
+  output$selected_var <- renderTable({ 
+    query <- input$txt
     myquerypath <- file.path("../fastas/query.fa")
     if (startsWith(query, ">")){
-        writeLines(query, myquerypath)
+      writeLines(query, myquerypath)
     } else {
-        writeLines(paste0(">Query\n",query), myquerypath)
+      writeLines(paste0(">Query\n",query), myquerypath)
     }
     
-    
-  
     #this makes sure the fasta is formatted properly
-   
+    
     results_folder <- file.path("../results")
     myquerypath <- file.path("../fastas/query.fa")
-    query <-read.fasta(file = myquerypath, seqtype = "DNA",as.string = TRUE)
     myquery <- readLines(myquerypath)
     header <- gsub(">", "", myquery[grep("^>", myquery)])
     query_length <- getLength(query)
     querystring <- toupper(c2s(query[[1]]))  #extract query sequence and capitalize it
     #Load templates fasta files
-    gi_1_templates <- read.fasta (file = '../fastas/GI_1.fa', seqtype = "DNA", as.string = TRUE)
-    gi_2_templates <- read.fasta (file = '../fastas/GI_2.fa', seqtype = "DNA", as.string = TRUE)
-    gii_1_templates <- read.fasta (file = '../fastas/GII_1.fa', seqtype = "DNA", as.string = TRUE)
-    gii_3_templates <- read.fasta (file = '../fastas/GII_3.fa', seqtype = "DNA", as.string = TRUE)
-    gii_4_templates <- read.fasta (file = '../fastas/GII_4.fa', seqtype = "DNA", as.string = TRUE)
-    gii_5_templates <- read.fasta (file = '../fastas/GII_5.fa', seqtype = "DNA", as.string = TRUE)
-    gv_i_templates <- read.fasta (file = '../fastas/GV_1.fa', seqtype = "DNA", as.string = TRUE)
+    gi_1_templates <- seqinr::read.fasta (file = '../fastas/GI_1.fa', seqtype = "DNA", as.string = TRUE)
+    gi_2_templates <- seqinr::read.fasta (file = '../fastas/GI_2.fa', seqtype = "DNA", as.string = TRUE)
+    gii_1_templates <- seqinr::read.fasta (file = '../fastas/GII_1.fa', seqtype = "DNA", as.string = TRUE)
+    gii_3_templates <- seqinr::read.fasta (file = '../fastas/GII_3.fa', seqtype = "DNA", as.string = TRUE)
+    gii_4_templates <- seqinr::read.fasta (file = '../fastas/GII_4.fa', seqtype = "DNA", as.string = TRUE)
+    gii_5_templates <- seqinr::read.fasta (file = '../fastas/GII_5.fa', seqtype = "DNA", as.string = TRUE)
+    gv_i_templates <- seqinr::read.fasta (file = '../fastas/GV_1.fa', seqtype = "DNA", as.string = TRUE)
+    
+    headers <- attr(list_files, "names")
+    genogroups <- str_extract(headers, "G[IV]++")
+    genogroups
+    genotypes <- str_extract(headers, "G.+/")
+    genotypes
+    
     
     #List of the files that contain templates for each genotype
     list_files <- c(gi_1_templates, gi_2_templates, gii_1_templates, gii_3_templates, gii_4_templates, gii_5_templates, gv_i_templates)
-    
-    
+    genotypes <- attr(gi_1_templates, "names")
+    for (i in 1:length(genotypes)){
+      #print(genotypes[i])
+      genotype <- str_extract(genotypes[i], ".G.")
+      print(genotype)
+    }
+      
+    attr(gi_1_templates, "names")
+    genotype <- gsub(">", "", list_files[1][grep("^/G*.*/", list_files[1])])
     list_genotypes <- c('../fastas/GI_1.fa', '../fastas/GI_2.fa', '../fastas/GII_1.fa', '../fastas/GII_3.fa', '../fastas/GII_4.fa', '../fastas/GII_5.fa', '../fastas/GV_1.fa')
-    
-    
     #This iterates 7 times over each file, but we have to manage how to print the messages without this loop
     for (r in 1:length(list_genotypes)){ #Iterate through all the template files
       list_templates <- list()
@@ -65,6 +74,11 @@ shinyServer(function(input,output,session){
       for(i in 1:length(list_files)) { 
         nam <- paste("seq", i, sep = "")
         assign(nam, toupper(c2s(list_files[[i]])))
+        attr(list_files[[i]], "names")
+        #print(attr(list_files[[i]], "names"))
+        #print (list_files[[i]])
+        print(nam)
+        genotype <- gsub(">", "", list_files[i][grep("^>*/", list_files[i])])
         list_templates[[nam]] <- (c2s(list_files[[i]]))
         write.fasta(sequences= toupper(c2s(list_files[[i]])), names=nam, file.out="../fastas/template.fa")
         fasta_file_names <- c(myquerypath, '../fastas//template.fa')
@@ -79,7 +93,7 @@ shinyServer(function(input,output,session){
         myClustalWAlignment <- msa(mysequences, "ClustalW", type = "dna")
         myClustalWAlignment <- msaConvert(myClustalWAlignment, "seqinr::alignment")
         d <- dist.alignment(myClustalWAlignment, matrix = "identity")
-        print(d)
+        #print(d)
         if (d <= 0.169){
           genotype <- my_positive_string
           break
@@ -89,16 +103,18 @@ shinyServer(function(input,output,session){
         }
       }
     }
-    
     summary_table <- data.frame(
       Name    = header,
       Length  = query_length,
       Genotype = genotype
     )
     summary_table
+  })
+    
+    
+
     
   })# sanitize.text.function = function(x) x)
   
-  #output$phylo <- renderplot({ })
 #})
 

@@ -46,7 +46,7 @@ shinyUI(fluidPage(
         # Main panel for displaying outputs ----
         mainPanel(
             tabsetPanel(
-                tabPanel("Genotype", tableOutput("summary_table") ), 
+                tabPanel("Genotype", tableOutput("selected_var") ), 
                 tabPanel("Phylogenetic analysis", verbatimTextOutput("summary"))
             )
         
