@@ -21,16 +21,34 @@ library(ggrepel)
 library(treeio)
 
 shinyServer(function(input,output,session){
+  
+  
   output$selected_var <- renderTable({
-    if (is.null(input$txt)){
-      return(NULL)
-    }
-    query <- input$txt
-    myquerypath <- file.path("../fastas/query.fa")
-    if (startsWith(query, ">")){
-      writeLines(query, myquerypath)
+    #validate(need((input$txt | input$file1) != '', 'Enter one type of input!'))
+    if (input$txt != ""){
+      query <- input$txt
+      myquerypath <- file.path("../fastas/query.fa")
+      if (startsWith(query, ">")){
+        writeLines(query, myquerypath)
+      } else {
+        writeLines(paste0(">Query\n",query), myquerypath)
+      }
+      myquery <- readLines(myquerypath)
+    } else if (input$txt == "" && input$file1 != "") {
+    observe({
+      file1 = input$file1
+      if (is.null(file1)) {
+        return(NULL)
+      }
+      data1 = read.fasta(file1$datapath)
+      dnabin_to_fasta <- lapply(data1, function(x) as.character(x[1:length(x)]))
+      cat(file="../fastas/query.fa", paste(paste0(">",names(dnabin_to_fasta)),
+                                 sapply(dnabin_to_fasta, paste, collapse=""), sep="\n"), sep="\n");
+    })
+      myquerypath <- file.path("../fastas/query.fa")
+      myquery <- readLines(myquerypath)
     } else {
-      writeLines(paste0(">Query\n",query), myquerypath)
+      stop ("Enter one kind of input")
     }
     
     #this makes sure the fasta is formatted properly
@@ -39,8 +57,8 @@ shinyServer(function(input,output,session){
     myquerypath <- file.path("../fastas/query.fa")
     myquery <- readLines(myquerypath)
     header <- gsub(">", "", myquery[grep("^>", myquery)])
-    query_length <- getLength(query)
-    querystring <- toupper(c2s(query[[1]]))  #extract query sequence and capitalize it
+    query_length <- getLength(myquery)
+    #querystring <- toupper(c2s(query[[1]]))  #extract query sequence and capitalize it
     
     #Load templates fasta files
     gi_1_templates <- seqinr::read.fasta (file = '../fastas/GI_1.fa', seqtype = "DNA", as.string = TRUE)
@@ -69,7 +87,7 @@ shinyServer(function(input,output,session){
     
     headers <- attr(list_files, "names")
     list_genogroups <- str_extract(headers, "G[IV]++")
-    list_genotypes <- str_extract(headers, "G.+/")
+    list_genotypes <- gsub('.{1}$', '', str_extract(headers, "G.+/"))
     #length(genotypes)
     #length(genogroups)
     
